@@ -1,0 +1,155 @@
+# Databricks App Configuration for DecisionMakingArena
+# Deploy with: databricks apps deploy
+
+name: decision-making-arena
+description: AI-Powered Executive Decision Support System
+
+# Application runtime
+runtime:
+  type: gradio
+  python_version: "3.9"
+
+# Entry point
+command: ["python", "src/ui/app.py"]
+
+# Resources
+resources:
+  - name: main
+    port: 7860
+    compute:
+      # Use serverless compute for auto-scaling
+      serverless: true
+      # Or specify cluster spec:
+      # cluster_spec:
+      #   spark_version: "13.3.x-scala2.12"
+      #   node_type_id: "i3.xlarge"
+      #   num_workers: 1
+
+# Environment variables
+env:
+  # Production mode flag
+  - name: PRODUCTION_MODE
+    value: "true"
+
+  # Databricks configuration
+  - name: DATABRICKS_WORKSPACE_URL
+    valueFrom:
+      secretKeyRef:
+        scope: decision_making_secrets
+        key: workspace_url
+
+  - name: DATABRICKS_TOKEN
+    valueFrom:
+      secretKeyRef:
+        scope: decision_making_secrets
+        key: databricks_token
+
+  # Genie Space IDs
+  - name: SALES_GENIE_SPACE_ID
+    valueFrom:
+      secretKeyRef:
+        scope: decision_making_secrets
+        key: sales_genie_space_id
+
+  - name: FINANCE_GENIE_SPACE_ID
+    valueFrom:
+      secretKeyRef:
+        scope: decision_making_secrets
+        key: finance_genie_space_id
+
+  - name: STRATEGIC_GENIE_SPACE_ID
+    valueFrom:
+      secretKeyRef:
+        scope: decision_making_secrets
+        key: strategic_genie_space_id
+
+  # Vector Search configuration
+  - name: VECTOR_SEARCH_ENDPOINT_NAME
+    value: "decision_making_vs_endpoint"
+
+  - name: VECTOR_SEARCH_INDEX_NAME
+    value: "decision_making_prod.business_data.knowledge_base_index"
+
+  # Model configuration
+  - name: MODEL_ORCHESTRATOR_MODEL
+    value: "databricks-meta-llama-3-1-405b-instruct"
+
+  - name: MODEL_CLASSIFIER_MODEL
+    value: "databricks-meta-llama-3-1-70b-instruct"
+
+  # App settings
+  - name: DEBUG
+    value: "false"
+
+  - name: APP_MAX_CONVERSATION_HISTORY
+    value: "10"
+
+  - name: APP_ENABLE_CACHING
+    value: "true"
+
+  - name: APP_CACHE_TTL_SECONDS
+    value: "300"
+
+# Dependencies
+dependencies:
+  requirements: requirements.txt
+
+# Permissions
+permissions:
+  # Users/groups who can access the app
+  access:
+    - group: executives
+    - user: ceo@company.com
+    - group: leadership_team
+
+  # Service principal for app to access resources
+  service_principal:
+    permissions:
+      - catalog: decision_making_prod
+        privileges: [USE, SELECT]
+      - schema: decision_making_prod.business_data
+        privileges: [USE, SELECT]
+      - schema: decision_making_prod.analytics_functions
+        privileges: [USE, EXECUTE]
+
+# Health check
+health_check:
+  path: "/"
+  port: 7860
+  interval_seconds: 30
+  timeout_seconds: 10
+  healthy_threshold: 2
+  unhealthy_threshold: 3
+
+# Scaling (for serverless)
+scaling:
+  min_instances: 1
+  max_instances: 5
+  target_cpu_utilization: 70
+
+# Monitoring
+monitoring:
+  enabled: true
+  log_level: INFO
+  metrics:
+    - name: request_count
+      type: counter
+    - name: response_time
+      type: histogram
+    - name: error_count
+      type: counter
+
+# Network
+network:
+  # Use workspace VPC
+  vpc_id: "default"
+  # Or specify custom VPC
+  # vpc_id: "vpc-xxxxx"
+  # subnet_ids: ["subnet-xxxxx"]
+
+# Tags
+tags:
+  project: "DecisionMakingArena"
+  team: "Data & Analytics"
+  environment: "production"
+  hackathon: "Databricks2025"

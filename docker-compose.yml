@@ -1,0 +1,96 @@
+# DecisionMakingArena - Docker Compose Configuration
+# For local development and testing
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: decision-making-arena
+    ports:
+      - "7860:7860"
+    environment:
+      # Production mode
+      - PRODUCTION_MODE=true
+
+      # Databricks configuration (from .env file)
+      - DATABRICKS_WORKSPACE_URL=${DATABRICKS_WORKSPACE_URL}
+      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
+      - DATABRICKS_WAREHOUSE_ID=${DATABRICKS_WAREHOUSE_ID:-}
+
+      # Genie Space IDs
+      - SALES_GENIE_SPACE_ID=${SALES_GENIE_SPACE_ID}
+      - FINANCE_GENIE_SPACE_ID=${FINANCE_GENIE_SPACE_ID}
+      - STRATEGIC_GENIE_SPACE_ID=${STRATEGIC_GENIE_SPACE_ID}
+
+      # Vector Search
+      - VECTOR_SEARCH_ENDPOINT_NAME=${VECTOR_SEARCH_ENDPOINT_NAME:-decision_making_vs_endpoint}
+      - VECTOR_SEARCH_INDEX_NAME=${VECTOR_SEARCH_INDEX_NAME:-decision_making_prod.business_data.knowledge_base_index}
+
+      # Model configuration
+      - MODEL_ORCHESTRATOR_MODEL=${MODEL_ORCHESTRATOR_MODEL:-databricks-meta-llama-3-1-405b-instruct}
+      - MODEL_CLASSIFIER_MODEL=${MODEL_CLASSIFIER_MODEL:-databricks-meta-llama-3-1-70b-instruct}
+
+      # App settings
+      - DEBUG=${DEBUG:-false}
+      - APP_MAX_CONVERSATION_HISTORY=${APP_MAX_CONVERSATION_HISTORY:-10}
+      - APP_ENABLE_CACHING=${APP_ENABLE_CACHING:-true}
+      - APP_CACHE_TTL_SECONDS=${APP_CACHE_TTL_SECONDS:-300}
+
+    env_file:
+      - .env
+    volumes:
+      # Mount logs directory
+      - ./logs:/app/logs
+      # Mount data for development (optional)
+      - ./data:/app/data:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - decision-making-network
+
+networks:
+  decision-making-network:
+    driver: bridge
+
+# Optional: Add monitoring services for production
+
+  # # Prometheus for metrics
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - prometheus-data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #   networks:
+  #     - decision-making-network
+
+  # # Grafana for dashboards
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #   depends_on:
+  #     - prometheus
+  #   networks:
+  #     - decision-making-network
+
+# volumes:
+#   prometheus-data:
+#   grafana-data:
